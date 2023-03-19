@@ -129,7 +129,7 @@ def performretis(pes_type,op_type,interfacevals,nmoves,basinAloc,initcoords,basi
     
     # DO RETIS
     for move in range(1, n_moves):
-        print('Move {}'.format(move))
+        print('Move {}'.format(move), end='\r')
 
         # Swap or Shoot? 
         ss = np.random.ranf()
