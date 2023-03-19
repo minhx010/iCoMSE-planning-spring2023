@@ -352,7 +352,7 @@ def performretis(pes_type,op_type,interfacevals,nmoves,basinAloc,initcoords,basi
                 # Append current accepted path to its corresponding path ensemble
                 allpaths[i].append(path)                                            # all paths contains all paths per each interface - i is to signify which interface 
                                                                                     # ensemble we're looking at. So allpaths[0] will contain all paths that cross interface lambda 0    
-    # Plot sampled paths from each interface
+    # Plot density of configs we visited!!!
     # Plot potential energy surface contours
     N = 100
     x_vec = np.linspace(-3.5, 3.5, N)
@@ -364,53 +364,54 @@ def performretis(pes_type,op_type,interfacevals,nmoves,basinAloc,initcoords,basi
         for j in range(len(y_vec)):
             energy[j][i] = ld.potential(x_vec[i],y_vec[j],pes_type)
     
-    # Plot the sampled paths for each interface and save the figures
-    skip = 100
+    from matplotlib.colors import Normalize 
+    from scipy.interpolate import interpn
 
-    for i in range(len(interfaces) - 1):
-        plt.figure()
+    skip = 1
 
-        plt.contour(x_vec,y_vec,energy,np.linspace(-3,3,20), cmap = 'jet')
-            
-        for j in range(1,len(allpaths[i]),skip):
-            plt.plot(allpaths[i][j][:,0],allpaths[i][j][:,1])
-                                                                                                # allpaths[i] tells you the interface ensemble you're in, 
-                                                                                                # [j] tells you a specific path in that ensemble, [:,0/1] takes 
-                                                                                                # all the x/y values of the paths in i
-        # Plot basin boundaries
+    x = []
+    y = [] 
 
-        if op_type == 1:
-            plt.plot(np.linspace(basinA,basinA,10),np.linspace(min(y_vec),max(y_vec),10),color='r', label='Basin A')
-            plt.plot(np.linspace(basinB,basinB,10),np.linspace(min(y_vec),max(y_vec),10),color='b', label='Basin B')
-        elif op_type == 2:
-            plt.plot(np.linspace(min(x_vec),max(x_vec),10),np.linspace(basinA,basinA,10),color='r', label='Basin A')
-            plt.plot(np.linspace(min(x_vec),max(x_vec),10),np.linspace(basinB,basinB,10),color='b', label='Basin B')
-        else:
-            xplot = np.linspace(min(x_vec),max(x_vec),10)
-            yplmax = basinB - xplot
-            yplmin = basinA - xplot
-            plt.plot(xplot,yplmin,color='r', label='Basin A')
-            plt.plot(xplot,yplmax,color='b', label='Basin B')
-            
-        # Plot interfaces
-        if op_type == 1:
-            plt.plot(np.linspace(interfaces[i],interfaces[i],10),np.linspace(min(y_vec),max(y_vec),10), color='grey')
-        elif op_type == 2:
-            plt.plot(np.linspace(min(x_vec),max(x_vec),10),np.linspace(interfaces[i],interfaces[i],10), color='grey')
-        else:
-            xplot = np.linspace(min(x_vec),max(x_vec),10)
-            yplot = interfaces[i]-xplot
-            plt.plot(xplot,yplot, color='grey')    
-        
-        cbar = plt.colorbar(cm.ScalarMappable(cmap='jet'))
-        cbar.set_ticks([])
-        cbar.set_label(label = 'Energy', size=12)
-        plt.legend(loc='upper right')
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.title('Interface Ensemble {}'.format(i))
-        # plt.savefig('RETIS-paths-intf-{}'.format(i), dpi=600)
-        plt.show
+    for l in range(len(interfaces)-1):
+        for i in range(len(allpaths[l])):
+            # Let's only look at transition paths
+            if np.where(allpaths[l][i][:,6] <= basinA)[0].shape[0] == 0 or np.where(allpaths[l][i][:,6] >= basinB)[0].shape[0] == 0:
+                continue
+            else:
+                for j in range(len(allpaths[l][i])): 
+                    x.append(allpaths[l][i][j][0])
+                    y.append(allpaths[l][i][j][1])
+    y = np.asarray(y)
+    x = np.asarray(x)
+
+
+    bins = 20
+    sort = True
+    fig , ax = plt.subplots(figsize=(8,6))
+    data , x_e, y_e = np.histogram2d( x, y, bins = bins, density = True )
+    z = interpn( ( 0.5*(x_e[1:] + x_e[:-1]) , 0.5*(y_e[1:]+y_e[:-1]) ) , data , np.vstack([x,y]).T , method = "splinef2d", bounds_error = False)
+
+    #To be sure to plot all data
+    z[np.where(np.isnan(z))] = 0.0
+
+    # Sort the points by density, so that the densest points are plotted last
+    if sort :
+        idx = z.argsort()
+        x, y, z = x[idx], y[idx], z[idx]
+
+    ax.scatter( x, y, c=z, s=2, cmap = 'jet', alpha = 0.002)
+
+    norm = Normalize(vmin = np.min(z), vmax = np.max(z))
+    cbar = fig.colorbar(cm.ScalarMappable(norm = norm, cmap = 'jet'), ax=ax)
+    cbar.ax.set_ylabel('Density')         
+
+    ax.contour(x_vec,y_vec,energy,[-3.5,-3,-2.5,-2,-1.5,-1,-0.5,0,0.5,1,1.5,2,2.5,3])
+    ax.set_xlabel('x',fontsize=15)
+    ax.set_ylabel('y',fontsize=15)
+    ax.tick_params(axis='both',labelsize=12)
+    plt.title('RETIS')
+    plt.show()
+
     return print("""\
           
             🎉 CONGRATULATIONS 🎉
