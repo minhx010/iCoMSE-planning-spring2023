@@ -405,7 +405,7 @@ def performretis(pes_type,op_type,interfacevals,nmoves,basinAloc,initcoords,basi
         cbar = plt.colorbar(cm.ScalarMappable(cmap='jet'))
         cbar.set_ticks([])
         cbar.set_label(label = 'Energy', size=12)
-        plt.legend()
+        plt.legend(loc='upper right')
         plt.xlabel('x')
         plt.ylabel('y')
         plt.title('Interface Ensemble {}'.format(i))
